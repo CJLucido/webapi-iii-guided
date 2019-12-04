@@ -15,7 +15,7 @@ const server = express();
 server.use(express.json()); //built-in middleware
 server.use(logger)//will change all routes to it (when not using next())
 
-server.use('/api/hubs', hubsRouter);//the router is also local middleware because it only applies to /api/hubs
+server.use('/api/hubs', checkRole('admin'), hubsRouter);//the router is also local middleware because it only applies to /api/hubs
 
 //custom middleware
 
@@ -29,13 +29,28 @@ function logger(req, res, next) {//next is like a button that if pressed the req
 //if not, send back status code 401 and a message. use it for area51
 
 function gatekeeper(req, res, next){
-  if(req.header.password = "mellon"){
+  const password = req.headers.password //everything that you read from url or headers will be a string
+
+  if(password && password.toLowerCase() === "mellon"){
     next()
   }else{
     res.status(401).json({message: "you don't have clearance"})
   }
 
 }
+
+//making middleware dynamic (needing to invoke it in the endpoint)
+
+function checkRole(role){
+  return function(req, res, next){
+    if(role && role === req.headers.role){
+        next()
+    }else{
+      res.status(403).json({message: "can't touch this"})
+    }
+  }
+}
+
 
 //ENDPOINTS
 //can also put next below (in crud ops) with the other two homies but on that route there is nothing that happens after. If we hadn't called send thennext is by default called even if not written in, but again, there is nothing to do next here
@@ -55,10 +70,15 @@ server.get("/echo", (req, res)=> {
   res.send(req.headers)
 })
 
-server.get('/area51', helmet(), gatekeeper(), (req, res)=> {
+server.get('/area51', helmet(),  gatekeeper, checkRole('agent'), (req, res)=> {
   res.send(req.headers)
 })
 
 module.exports = server;
 
+//putting a period after a word is a good test for if something exists
 
+
+//reminder: arrow functions will not hoist
+
+//optimize for readability not less lines of code!!! "please, please, please" - Luis Hernandez (nesting arrow functions can get very complicated for someone who isn't as familiar with the syntax)
